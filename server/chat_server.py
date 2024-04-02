@@ -89,6 +89,7 @@ def reply_to_prompt():
         model_inputs = encodeds.to(config.device)
         generated_ids = model.generate(model_inputs, max_new_tokens=config.max_new_tokens, do_sample=True)
         decoded = tokenizer.batch_decode(generated_ids)
+        print(f"decoded = \n{decoded}")
         return decoded[0]
     else:
         raise NotImplementedError(f"chat_server.py reply_to_prompt(): Not implemented model ID '{config.model_id}'")
