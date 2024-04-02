@@ -89,8 +89,12 @@ def reply_to_prompt():
         model_inputs = encodeds.to(config.device)
         generated_ids = model.generate(model_inputs, max_new_tokens=config.max_new_tokens, do_sample=True)
         decoded = tokenizer.batch_decode(generated_ids)
-        print(f"decoded = \n{decoded}")
-        return decoded[0]
+        response = decoded[0]
+        # Find the last instance of '[/INST]'
+        last_inst_ndx = response.rfind('[/INST] ')
+        if last_inst_ndx == -1:
+            raise ValueError(f"chat_server.reply_to_prompt(): Could not find the string '[/INST] ' in the decoded response\n{response}")
+        return response[last_inst_ndx + 7:]
     else:
         raise NotImplementedError(f"chat_server.py reply_to_prompt(): Not implemented model ID '{config.model_id}'")
 
