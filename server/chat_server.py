@@ -1,8 +1,9 @@
 import types
 from flask import Flask, request
 import xml.etree.ElementTree as ET
-from transformers import pipeline
+from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
 import torch
+import copy
 
 # Example curl call:
 #    curl -X POST -d '{"prompt": "How old is the great chinese wall?"}' -H "Content-Type: application/json" http://127.0.0.1:5001
@@ -33,10 +34,21 @@ config = load_config()
 
 # Load the model
 pipe = None
+model = None
+tokenizer = None
+messages = None
 
 if config.model_id == 'HuggingFaceH4/zephyr-7b-alpha':
     pipe = pipeline("text-generation", model=config.model_id, torch_dtype=torch.bfloat16,
                     device_map=config.device)
+elif config.model_id == "mistralai/Mistral-7B-Instruct-v0.2":  # Cf. https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2
+    model = AutoModelForCausalLM.from_pretrained(config.model_id)
+    model.to(config.device)
+    tokenizer = AutoTokenizer.from_pretrained(config.model_id)
+    messages = [
+    {"role": "user", "content": "What is your favourite condiment?"},
+    {"role": "assistant", "content": "Well, I'm quite partial to a good squeeze of fresh lemon juice. It adds just the right amount of zesty flavour to whatever I'm cooking up in the kitchen!"},
+]
 else:
     raise NotImplementedError(f"chat_server.py: Not implemented model ID '{config.model_id}'")
 
@@ -56,20 +68,31 @@ def reply_to_prompt():
         return f"chat_server.reply_to_prompt(): 'prompt' was not found in request.json ({request.json})"
 
     prompt = request.json['prompt']
-    messages = [
-        {
-            "role": "system",
-            "content": config.model_instructions,
-        },
-        {
-            "role": "user",
-            "content": prompt},
-    ]
+    if config.model_id == 'HuggingFaceH4/zephyr-7b-alpha':
+        messages = [
+            {
+                "role": "system",
+                "content": config.model_instructions,
+            },
+            {
+                "role": "user",
+                "content": prompt},
+        ]
 
-    formatted_prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    outputs = pipe(formatted_prompt, max_new_tokens=config.max_new_tokens, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
-    return (outputs[0]["generated_text"])
+        formatted_prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        outputs = pipe(formatted_prompt, max_new_tokens=config.max_new_tokens, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
+        return (outputs[0]["generated_text"])
 
+    elif config.model_id == "mistralai/Mistral-7B-Instruct-v0.2":
+        messages_and_prompt = copy.deepcopy(messages)
+        messages_and_prompt.append({"role": "user", "content": f"{config.model_instructions}\n{prompt}"})
+        encodeds = tokenizer.apply_chat_template(messages, return_tensors="pt")
+        model_inputs = encodeds.to(config.device)
+        generated_ids = model.generate(model_inputs, max_new_tokens=config.max_new_tokens, do_sample=True)
+        decoded = tokenizer.batch_decode(generated_ids)
+        return decoded[0]
+    else:
+        raise NotImplementedError(f"chat_server.py reply_to_prompt(): Not implemented model ID '{config.model_id}'")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=config.port)
