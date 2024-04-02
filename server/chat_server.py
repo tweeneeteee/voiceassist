@@ -44,10 +44,6 @@ if config.model_id == 'HuggingFaceH4/zephyr-7b-alpha':
 elif config.model_id == "mistralai/Mistral-7B-Instruct-v0.2":  # Cf. https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2
     model = AutoModelForCausalLM.from_pretrained(config.model_id, torch_dtype=torch.float16, device_map=config.device)
     tokenizer = AutoTokenizer.from_pretrained(config.model_id)
-    messages = [
-    {"role": "user", "content": "What is your favourite condiment?"},
-    {"role": "assistant", "content": "Well, I'm quite partial to a good squeeze of fresh lemon juice. It adds just the right amount of zesty flavour to whatever I'm cooking up in the kitchen!"},
-]
 else:
     raise NotImplementedError(f"chat_server.py: Not implemented model ID '{config.model_id}'")
 
@@ -84,8 +80,12 @@ def reply_to_prompt():
         return (outputs[0]["generated_text"])
 
     elif config.model_id == "mistralai/Mistral-7B-Instruct-v0.2":
-        messages_and_prompt = copy.deepcopy(messages)
-        messages_and_prompt.append({"role": "user", "content": f"{config.model_instructions}\n{prompt}"})
+        messages = [
+            {"role": "user", "content": "What is your favourite condiment?"},
+            {"role": "assistant",
+             "content": "Well, I'm quite partial to a good squeeze of fresh lemon juice. It adds just the right amount of zesty flavour to whatever I'm cooking up in the kitchen!"},
+            {"role": "user", "content": f"{config.model_instructions}\n{prompt}"}
+        ]
         encodeds = tokenizer.apply_chat_template(messages, return_tensors="pt")
         model_inputs = encodeds.to(config.device)
         generated_ids = model.generate(model_inputs, max_new_tokens=config.max_new_tokens, do_sample=True)
