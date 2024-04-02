@@ -42,8 +42,7 @@ if config.model_id == 'HuggingFaceH4/zephyr-7b-alpha':
     pipe = pipeline("text-generation", model=config.model_id, torch_dtype=torch.bfloat16,
                     device_map=config.device)
 elif config.model_id == "mistralai/Mistral-7B-Instruct-v0.2":  # Cf. https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2
-    model = AutoModelForCausalLM.from_pretrained(config.model_id)
-    model.to(config.device)
+    model = AutoModelForCausalLM.from_pretrained(config.model_id, torch_dtype=torch.float16, device_map=config.device)
     tokenizer = AutoTokenizer.from_pretrained(config.model_id)
     messages = [
     {"role": "user", "content": "What is your favourite condiment?"},
