@@ -66,6 +66,7 @@ def reply_to_prompt():
     if not 'prompt' in request.json:
         return f"chat_server.reply_to_prompt(): 'prompt' was not found in request.json ({request.json})"
 
+    print(f"chat_server.reply_to_prompt(): messages = {messages}")
     prompt = request.json['prompt']
     if config.model_id == 'HuggingFaceH4/zephyr-7b-alpha':
         messages = [
