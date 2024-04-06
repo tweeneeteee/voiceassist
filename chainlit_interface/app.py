@@ -1,6 +1,5 @@
 import chainlit as cl
 import logging
-import subprocess
 import requests
 import xml.etree.ElementTree as ET
 import types
@@ -25,10 +24,9 @@ async def on_chat_start():
     # Check if the service is up
     url_responds = False
     try:
-        command = f"curl {config.llm_service_url}"
-        result = subprocess.run(command, stdout=subprocess.PIPE, shell=True, check=True)
+        result = requests.get(config.llm_service_url)
         url_responds = True
-    except subprocess.CalledProcessError:
+    except:
         url_responds = False
     if not url_responds:
         logging.error(f"The llm service at address {config.llm_service_url} doesn't respond")
